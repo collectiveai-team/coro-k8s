@@ -45,7 +45,7 @@ jobs:
           df -h /
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v10.3.0
+        uses: astral-sh/setup-uv@v10.3.2
         with:
           version: "0.13.3"
           enable-cache: true
@@ -54,7 +54,7 @@ jobs:
         run: uv sync --locked
 
       - name: Set up Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
         with:
           version: v4.3.0
 
