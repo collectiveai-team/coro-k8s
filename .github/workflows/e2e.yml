@@ -1,0 +1,81 @@
+name: E2E
+
+# The whole stack on a kind cluster: the coro chart with whisper-tiny on CPU,
+# Prefect server and worker, and a batch of three jobs whose callbacks
+# examples/kind/run-demo.sh checks. About 15 minutes, so it runs when what it
+# exercises changes, every night, and on demand, not on every pull request.
+
+on:
+  pull_request:
+    paths:
+      - "charts/**"
+      - "coro_batch/**"
+      - "deploy/**"
+      - "examples/kind/**"
+      - "prefect.yaml"
+      - "Dockerfile"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/e2e.yml"
+  schedule:
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  kind:
+    name: kind e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # The coro image is 3 GB and kind keeps a second copy in the node.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: "0.13.3"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v4.3.0
+
+      - name: Install kind
+        uses: helm/kind-action@v1
+        with:
+          version: v0.33.0
+          install_only: true
+
+      - name: Stand up the stack
+        run: examples/kind/up.sh
+
+      - name: Run a batch and check its callbacks
+        run: examples/kind/run-demo.sh
+
+      - name: Dump the cluster
+        if: failure()
+        run: |
+          kubectl get pods --all-namespaces -o wide
+          kubectl get events --all-namespaces --sort-by=.lastTimestamp | tail -n 60
+          kubectl --namespace coro logs deployment/coro --tail=200 || true
+          kubectl --namespace prefect logs deployment/prefect-worker --tail=200 || true
+          kubectl --namespace prefect logs --selector=job-name --tail=200 --prefix || true
+          kubectl --namespace demo logs deployment/callback-receiver --tail=200 || true

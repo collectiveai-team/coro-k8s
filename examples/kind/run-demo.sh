@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 # Register the flow on the kind cluster and run a batch of three jobs against coro.
 #
-# Run after examples/kind/up.sh, from the root of the repository. Prints the
-# callbacks that the receiver got.
+# Run after examples/kind/up.sh, from the root of the repository. Exits non-zero
+# unless the receiver got the three expected callbacks, signed.
 set -eu
 
 BATCH_IMAGE="${BATCH_IMAGE:-coro-batch:dev}"
@@ -13,6 +13,18 @@ FORWARD=$!
 trap 'kill $FORWARD' EXIT
 export PREFECT_API_URL=http://localhost:4200/api
 until curl -fsS "$PREFECT_API_URL/health" >/dev/null 2>&1; do sleep 1; done
+
+# The worker creates the work pool once it reaches the server, which can be a
+# minute after its pod is ready: it retries a server that started after it.
+tries=0
+until uv run prefect work-pool inspect coro-k8s >/dev/null 2>&1; do
+    tries=$((tries + 1))
+    if [ "$tries" -gt 60 ]; then
+        echo "FAIL: the worker never created the work pool coro-k8s" >&2
+        exit 1
+    fi
+    sleep 5
+done
 
 # The global limit sized for the coro of the example: 1 replica x 2 permits.
 uv run prefect gcl create coro-transcriptions --limit 2 2>/dev/null \
@@ -36,5 +48,25 @@ uv run prefect deployment run transcribe-batch/transcribe-batch --watch --params
 
 echo
 echo "== callbacks received"
-# The receiver logs each request with its JSON body pretty-printed.
-kubectl --namespace demo logs deployment/callback-receiver | grep -E '"(job_id|status|error)":' || true
+# The receiver logs each request with its JSON body pretty-printed, one field per line.
+LOGS=$(kubectl --namespace demo logs deployment/callback-receiver)
+RECEIVED=$(printf '%s\n' "$LOGS" | grep -E '^ *"(job_id|status)":' | tr -d ' ,"' | paste -d ' ' - - | sort -u)
+EXPECTED=$(printf '%s\n' \
+    "job_id:demo-1 status:succeeded" \
+    "job_id:demo-2 status:succeeded" \
+    "job_id:demo-missing status:failed")
+printf '%s\n' "$RECEIVED"
+if [ "$RECEIVED" != "$EXPECTED" ]; then
+    echo "FAIL: expected callbacks:" >&2
+    printf '%s\n' "$EXPECTED" >&2
+    exit 1
+fi
+if ! printf '%s\n' "$LOGS" | grep -q 'ask not what your country'; then
+    echo "FAIL: no callback carried the JFK transcript" >&2
+    exit 1
+fi
+if ! printf '%s\n' "$LOGS" | grep -q '"x-coro-batch-signature": "sha256='; then
+    echo "FAIL: the callbacks were not signed" >&2
+    exit 1
+fi
+echo "OK: three callbacks, signed, with the expected outcomes"
