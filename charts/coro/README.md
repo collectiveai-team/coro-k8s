@@ -12,9 +12,9 @@ helm test coro --namespace coro --logs   # transcribes the JFK clip through the 
 
 One coro process per pod; scale with replicas, not uvicorn workers. coro sizes
 its ASR permits from the cores it may use: with `CORO_ASR_MAX_CONCURRENCY=0`
-it is one permit per 4 cores. coro 1.6.0 reads the cores of the node, not the
-CPU limit, so set `CORO_ASR_MAX_CONCURRENCY` explicitly until a release reads
-the limit.
+it is one permit per 4 cores of the CPU limit, from coro 1.7.0. Older releases
+read the cores of the node, so set `CORO_ASR_MAX_CONCURRENCY` explicitly for
+them.
 
 `resources` defaults to 4 CPUs and 8 GiB with requests equal to limits
 (Guaranteed QoS). Under the kubelet's static CPU manager policy the pod then
@@ -54,7 +54,7 @@ over the pods of the Service: ASR calls waiting or running per permit. With
 `metricType: Value` the replica count scales by that ratio over
 `autoscaling.keda.targetLoadPerPermit`. It needs KEDA, a Prometheus that scrapes
 coro (`metrics.serviceMonitor.enabled`), and a coro release with `GET /metrics`
-(after 1.6.0). Scale-down waits `cooldownPeriod` (600 s) because a new replica
+(1.7.0 or later). Scale-down waits `cooldownPeriod` (600 s) because a new replica
 takes minutes to warm up.
 
 ## Limits of coro to keep in mind
