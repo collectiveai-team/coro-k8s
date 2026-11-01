@@ -33,7 +33,7 @@ offline batches whose results go to a system that receives callbacks.
 
 ## Consequences
 
-- No change to coro is needed. A coro release with `GET /metrics` enables the
+- No change to coro is needed. `GET /metrics`, from coro 1.7.0, enables the
   KEDA autoscaling of the chart.
 - Callbacks are at-least-once: a receiver deduplicates on `job_id`.
 - A coro pod removed mid-request loses the request; the flow retries it on

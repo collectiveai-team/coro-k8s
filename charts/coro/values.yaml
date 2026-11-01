@@ -19,8 +19,8 @@ replicaCount: 1
 coro:
   env:
     CORO_PIPELINE: full-memory
-    # 0: one permit per 4 cores of the CPU limit. Requires coro > 1.6.0 to read
-    # the limit; set it explicitly for 1.6.0 and older.
+    # 0: one permit per 4 cores of the CPU limit (coro 1.7.0 and later; older
+    # releases read the cores of the node, so set it explicitly for them).
     CORO_ASR_MAX_CONCURRENCY: "0"
     CORO_ASR_MAX_QUEUE_DEPTH: "32"
     # The limits of coro are per replica; enforce a global one at the edge.
@@ -93,7 +93,7 @@ terminationGracePeriodSeconds: 3600
 preStopSleepSeconds: 10
 
 autoscaling:
-  # none, hpa (CPU) or keda (queued ASR work, needs coro > 1.6.0 and KEDA).
+  # none, hpa (CPU) or keda (queued ASR work, needs coro 1.7.0 or later and KEDA).
   mode: none
   minReplicas: 1
   maxReplicas: 4

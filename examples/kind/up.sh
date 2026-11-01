@@ -6,10 +6,10 @@
 set -eu
 
 CLUSTER=coro-k8s
-CORO_IMAGE="${CORO_IMAGE:-ghcr.io/collectiveai-team/coro:1.6.0-cpu}"
+CORO_IMAGE="${CORO_IMAGE:-ghcr.io/collectiveai-team/coro:1.7.0-cpu}"
 BATCH_IMAGE="${BATCH_IMAGE:-coro-batch:dev}"
 PREFECT_CHART_VERSION=2026.10.30155115
-JFK_URL=https://raw.githubusercontent.com/collectiveai-team/coro/v1.6.0/coro/bench/data/jfk.wav
+JFK_URL=https://raw.githubusercontent.com/collectiveai-team/coro/v1.7.0/coro/bench/data/jfk.wav
 
 step() { printf '\n== %s\n' "$*"; }
 
