@@ -14,6 +14,18 @@ trap 'kill $FORWARD' EXIT
 export PREFECT_API_URL=http://localhost:4200/api
 until curl -fsS "$PREFECT_API_URL/health" >/dev/null 2>&1; do sleep 1; done
 
+# The worker creates the work pool once it reaches the server, which can be a
+# minute after its pod is ready: it retries a server that started after it.
+tries=0
+until uv run prefect work-pool inspect coro-k8s >/dev/null 2>&1; do
+    tries=$((tries + 1))
+    if [ "$tries" -gt 60 ]; then
+        echo "FAIL: the worker never created the work pool coro-k8s" >&2
+        exit 1
+    fi
+    sleep 5
+done
+
 # The global limit sized for the coro of the example: 1 replica x 2 permits.
 uv run prefect gcl create coro-transcriptions --limit 2 2>/dev/null \
     || uv run prefect gcl update coro-transcriptions --limit 2
