@@ -1,0 +1,154 @@
+{{- include "coro.validate" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "coro.fullname" . }}
+  labels:
+    {{- include "coro.labels" . | nindent 4 }}
+spec:
+  {{- if eq .Values.autoscaling.mode "none" }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "coro.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # A new replica takes minutes to warm up; keep the old ones serving meanwhile.
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.metrics.podAnnotations }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.service.port | quote }}
+        prometheus.io/path: /metrics
+        {{- end }}
+      labels:
+        {{- include "coro.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "coro.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: coro
+          image: {{ include "coro.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["serve"]
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            - name: CORO_HOST
+              value: "0.0.0.0"
+            - name: CORO_PORT
+              value: "8000"
+            - name: HF_HOME
+              value: {{ printf "%s/huggingface" .Values.modelCache.mountPath | quote }}
+            - name: XDG_CACHE_HOME
+              value: {{ .Values.modelCache.mountPath | quote }}
+            - name: CORO_TRANSCRIPT_SPILL_DIR
+              value: {{ .Values.spill.mountPath | quote }}
+            - name: FORWARDED_ALLOW_IPS
+              value: {{ .Values.coro.forwardedAllowIps | quote }}
+            {{- range $name, $value := .Values.coro.env }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- with .Values.coro.hfTokenSecret.name }}
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ . }}
+                  key: {{ $.Values.coro.hfTokenSecret.key }}
+            {{- end }}
+            {{- with .Values.coro.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", {{ .Values.preStopSleepSeconds | quote }}]
+          resources:
+            {{- $resources := deepCopy .Values.resources }}
+            {{- if .Values.gpu.enabled }}
+            {{- $limits := default dict $resources.limits }}
+            {{- $_ := set $limits .Values.gpu.resourceName (.Values.gpu.count | toString) }}
+            {{- $_ := set $resources "limits" $limits }}
+            {{- end }}
+            {{- toYaml $resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: model-cache
+              mountPath: {{ .Values.modelCache.mountPath }}
+            - name: spill
+              mountPath: {{ .Values.spill.mountPath }}
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: model-cache
+          {{- with include "coro.modelCacheClaim" . }}
+          persistentVolumeClaim:
+            claimName: {{ . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: spill
+          emptyDir:
+            sizeLimit: {{ .Values.spill.sizeLimit }}
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

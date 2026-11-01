@@ -1,0 +1,22 @@
+# The coro chart on a laptop: faster-whisper tiny on CPU, ASR only, 2 cores.
+image:
+  pullPolicy: IfNotPresent
+coro:
+  env:
+    CORO_BACKEND_ASR: faster-whisper
+    CORO_MODEL_ASR: openai/whisper-tiny
+    CORO_ASR_DEVICE: cpu
+    CORO_ASR_COMPUTE_TYPE: int8
+    CORO_ASR_MAX_CONCURRENCY: "2"
+    CORO_ASR_MAX_QUEUE_DEPTH: "4"
+    CORO_RATE_LIMIT_REQUESTS_PER_MINUTE: "0"
+resources:
+  requests:
+    cpu: "2"
+    memory: 3Gi
+  limits:
+    cpu: "2"
+    memory: 3Gi
+spill:
+  sizeLimit: 2Gi
+terminationGracePeriodSeconds: 120

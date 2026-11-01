@@ -1,0 +1,12 @@
+# Values of the prefect/prefect-worker chart for coro-k8s: a Kubernetes worker
+# that starts one Job per flow run of the work pool coro-k8s.
+worker:
+  apiConfig: selfHostedServer
+  selfHostedServerApiConfig:
+    apiUrl: http://prefect-server.prefect.svc.cluster.local:4200/api
+  config:
+    workPool: coro-k8s
+    type: kubernetes
+    # Flow runs started at once by this worker. Each holds a batch; the
+    # transcriptions of all of them are bounded by the coro-transcriptions limit.
+    limit: 10

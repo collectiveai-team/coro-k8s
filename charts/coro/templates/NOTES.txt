@@ -1,0 +1,13 @@
+coro {{ .Chart.AppVersion }} ({{ .Values.image.flavor }}) is starting as {{ include "coro.fullname" . }}.
+
+A replica becomes ready after it downloads its models and runs Server Warmup,
+which takes minutes on an empty model cache:
+
+  kubectl -n {{ .Release.Namespace }} rollout status deployment/{{ include "coro.fullname" . }} --timeout=30m
+
+Inside the cluster the OpenAI-compatible endpoint is:
+
+  http://{{ include "coro.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}/v1/audio/transcriptions
+
+coro has no authentication. Keep it behind an authenticating proxy, or reachable
+only inside the cluster (networkPolicy.enabled=true).

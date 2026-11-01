@@ -1,0 +1,11 @@
+image:
+  flavor: gpu
+gpu:
+  enabled: true
+modelCache:
+  create: true
+  accessModes: [ReadWriteOnce]
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule

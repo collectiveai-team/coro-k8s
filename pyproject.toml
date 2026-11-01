@@ -1,0 +1,190 @@
+[project]
+name = "coro-batch"
+dynamic = ["version"]
+description = "Batch transcription with coro on Kubernetes: Prefect flows that fetch audio, transcribe it with a coro Service, store the result and call back."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "collective.ai" }]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fsspec>=2026.6.0",
+    "httpx>=0.28",
+    "prefect>=3.9,<4",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.0",
+    "structlog>=25.1",
+]
+
+[project.optional-dependencies]
+s3 = ["s3fs>=2026.6.0"]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.0"
+
+[tool.hatch.build.targets.wheel]
+packages = ["coro_batch"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.15,<0.18",
+    "pyrefly>=1.4,<2",
+    "pytest-timeout>=2.4.0",
+    "pytest-randomly>=5.0.0",
+    "pytest-socket>=0.8.1",
+]
+
+# MARK: uv
+# CES-128: uv resolves only the files that were uploaded to the index at least
+# 7 days ago.
+[tool.uv]
+exclude-newer = "7 days"
+
+# MARK: Pyrefly
+[tool.pyrefly]
+project-excludes = [
+  "**/node_modules",
+  "**/__pycache__",
+  "**/venv/**/*",
+  "**/.venv/**/*",
+  "**/.uv_cache/**/*",
+]
+use-ignore-files = false
+disable-project-excludes-heuristics = true
+
+# MARK: Ruff
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ruff.lint]
+# DOC102, DOC202 and DOC403 are preview rules. `explicit-preview-rules` keeps every other preview
+# rule off, and `preview` stays in `lint` so that the formatter keeps its stable style.
+preview = true
+explicit-preview-rules = true
+select = [
+  "E",
+  "F",
+  "I",
+  "C4",
+  "C90",
+  "ICN",
+  "INP",
+  "PIE",
+  "PT",
+  "TC",
+  "PGH",
+  "NPY",
+  "PLE",
+  "PLW",
+  "FA",
+  "B",
+  "S",
+  "G",
+  "SIM",
+  "RET",
+  "DTZ",
+  "PTH",
+  "LOG",
+  "TID251",
+  "TID252",
+  # TID253 before Python 3.15, PLC0415 from 3.15: the parameter ruff-import-rule.
+  "TID253",
+  "UP",
+  "RUF",
+  "ERA001",
+  "ASYNC",
+  "A",
+  "BLE",
+  "SLOT",
+  "PLR0124",
+  "PLR0133",
+  "D200",
+  "D205",
+  "D212",
+  "D300",
+  "D301",
+  "D400",
+  "D401",
+  "D403",
+  "D405",
+  "D406",
+  "D407",
+  "D408",
+  "D409",
+  "D410",
+  "D411",
+  "D412",
+  "D413",
+  "D414",
+  "D415",
+  "D417",
+  "D418",
+  "D419",
+  "DOC102",
+  "DOC202",
+  "DOC403",
+  "PERF",
+]
+task-tags = ["TODO", "FIXME", "XXX", "MARK"]
+# `botica lint` suppressions in `# noqa: BTxxx` comments; without this ruff reports RUF102.
+external = ["BT"]
+
+[tool.ruff.lint.flake8-type-checking]
+# pydantic reads the annotations of its models at run time.
+runtime-evaluated-base-classes = ["pydantic.BaseModel", "pydantic_settings.BaseSettings"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+banned-module-level-imports = ["torch", "tensorflow", "jax", "transformers", "cv2"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "INP001"]
+# The adapters, which exist to use a heavy library, and the test files import it at the top.
+"**/impl/**" = ["TID253"]
+"**/test_*.py" = ["TID253"]
+"**/*_test.py" = ["TID253"]
+
+# MARK: Pytest
+[tool.pytest.ini_options]
+# CES-125. pytest 9.0 ignores --strict-markers and --strict-config in addopts (pytest#14442), and
+# pytest 8 does not know the strict_* keys: minversion stops it instead.
+minversion = "9.0"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = ["-ra", "--disable-socket", "--allow-unix-socket"]
+strict_config = true
+strict_markers = true
+strict_xfail = true
+strict_parametrization_ids = true
+empty_parameter_set_mark = "fail_at_collect"
+required_plugins = ["pytest-asyncio", "pytest-socket", "pytest-timeout"]
+# Seconds for each test; a slower test takes @pytest.mark.timeout(N).
+timeout = 60
+# Seconds for the whole run. pytest-timeout checks it after each test and stops the run there.
+session_timeout = 900
+markers = [
+  "unit: fast isolated tests, no external deps",
+  "integration: tests requiring external services or multi-component interaction",
+  "e2e: end-to-end smoke tests",
+]
+
+# MARK: deptry
+[tool.deptry.per_rule_ignores]
+# fsspec imports s3fs when a URL starts with s3://; nothing imports it by name.
+DEP002 = ["s3fs"]

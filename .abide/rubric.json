@@ -1,0 +1,292 @@
+{
+  "version": 1,
+  "compiledAt": "2026-11-01T04:56:04Z",
+  "compiledBy": "botica 0.18.1",
+  "manual": true,
+  "sources": [
+    {
+      "path": "AGENTS.md"
+    }
+  ],
+  "rules": [
+    {
+      "id": "separate-orchestration",
+      "text": "A function either orders the steps of a task or carries out one of them. The orchestration (the order of the calls and the control flow) does not share a function with the rules of the domain and the I/O; it calls named units that hold them.",
+      "source": {
+        "path": "AGENTS.md",
+        "line": 69
+      },
+      "scope": [
+        "coro_batch/**/*.js",
+        "coro_batch/**/*.jsx",
+        "coro_batch/**/*.mjs",
+        "coro_batch/**/*.cjs",
+        "coro_batch/**/*.py",
+        "coro_batch/**/*.pyi",
+        "coro_batch/**/*.ts",
+        "coro_batch/**/*.tsx",
+        "coro_batch/**/*.mts",
+        "coro_batch/**/*.cts"
+      ],
+      "when": "edit",
+      "check": {
+        "type": "model",
+        "question": {
+          "type": "boolean",
+          "instructions": "Read each function of the file. Is there a function that decides the order of the steps of a task (calls, control flow) and also computes a rule of the domain and does the I/O of those steps itself? A function that only orders calls, one that carries out one step, and a file with no function or with only classes that declare data do not break the rule. A log call is not I/O. An entry point that reads its arguments, calls the steps, prints a summary and returns an exit code, and the loop of a transport that reads a message, dispatches it and writes the reply, only order calls.",
+          "criteria": {
+            "true": "a function mixes the order of the steps with the logic and the I/O of those steps",
+            "false": "orchestration and the steps it calls live in separate functions, or the file declares data only"
+          }
+        }
+      }
+    },
+    {
+      "id": "architecture-vocabulary",
+      "text": "Layers and packages are named `entrypoints`, `api`, `database`, `impl` and `core`, an interface is a port and its implementation an adapter, and a concept that already has a name gets no synonym.",
+      "source": {
+        "path": "AGENTS.md",
+        "line": 70
+      },
+      "scope": [
+        "**/*.js",
+        "**/*.jsx",
+        "**/*.mjs",
+        "**/*.cjs",
+        "**/*.py",
+        "**/*.pyi",
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.mts",
+        "**/*.cts"
+      ],
+      "when": "edit",
+      "check": {
+        "type": "model",
+        "question": {
+          "type": "boolean",
+          "instructions": "Read the names of the modules, packages, classes and functions that the file defines or imports from the project. Answer true only when one of those units is named with a synonym of a term of the house vocabulary (layers entrypoints, api, database, impl, core; ports and adapters), such as manager, handler, helper, processor, common, shared, persistence or dal. These do not count: a word inside a string or in data, a local variable, a name imported from a library (`APILogHandler`, structlog `Processor`), a name of the domain, and folders inside a layer such as routers, schemas, requests, responses, tests or fakes.",
+          "criteria": {
+            "true": "a unit is named with a synonym of a term the vocabulary already has",
+            "false": "no unit is named with a synonym of the vocabulary"
+          }
+        }
+      }
+    },
+    {
+      "id": "test-in-memory-adapters",
+      "text": "Tests drive the logic through in-memory adapters of the ports of the project: working fakes that implement the same interface as the production adapter. A mock stands in only for a third-party boundary that cannot reasonably be faked. `botica refs show in-memory-adapters` prints an adapter with its port.",
+      "source": {
+        "path": "AGENTS.md",
+        "line": 79
+      },
+      "scope": [
+        "tests/**/*.py",
+        "tests/**/*.pyi"
+      ],
+      "when": "edit",
+      "check": {
+        "type": "model",
+        "question": {
+          "type": "boolean",
+          "instructions": "Read the tests of the file. Does a test replace a port of the project with a mock, or assert on the calls that a mock received, where a working in-memory adapter of the port would drive the logic? A mock of a third-party boundary that cannot reasonably be faked does not break the rule.",
+          "criteria": {
+            "true": "the tests mock a port of the project, or assert on the calls a mock received",
+            "false": "the tests use in-memory adapters of the ports and assert on outcomes"
+          }
+        }
+      }
+    },
+    {
+      "id": "test-through-interface",
+      "text": "Tests call the unit under test through the public interface that production code calls, and assert on observable behaviour. A test reads no private attribute, calls no underscore-prefixed member and asserts on no internal state of the unit.",
+      "source": {
+        "path": "AGENTS.md",
+        "line": 80
+      },
+      "scope": [
+        "tests/**/*.js",
+        "tests/**/*.jsx",
+        "tests/**/*.mjs",
+        "tests/**/*.cjs",
+        "tests/**/*.py",
+        "tests/**/*.pyi",
+        "tests/**/*.ts",
+        "tests/**/*.tsx",
+        "tests/**/*.mts",
+        "tests/**/*.cts"
+      ],
+      "when": "edit",
+      "check": {
+        "type": "model",
+        "question": {
+          "type": "boolean",
+          "instructions": "Read the tests of the file. Does a test read a private attribute of the unit under test, call one of its underscore-prefixed members, or assert on its internal state instead of on what its public interface returns or does? A name with an underscore that the test file defines itself, and loading the module under test from its path, do not break the rule.",
+          "criteria": {
+            "true": "a test reaches into private attributes, private methods or internal state of the unit under test",
+            "false": "the tests call the public interface and assert on observable behaviour"
+          }
+        }
+      }
+    },
+    {
+      "id": "plain-writing",
+      "text": "Prose says what a thing is and what it does, in plain sentences that a file, a command or an issue of the repository backs, with no inflated words, hedges, trailing judgments, bold emphasis or claims without a source.",
+      "source": {
+        "path": "AGENTS.md",
+        "line": 86
+      },
+      "scope": [
+        "AGENTS.md",
+        "README.md",
+        ".github/pull_request_template.md",
+        ".github/ISSUE_TEMPLATE/**",
+        "charts/coro/README.md",
+        "charts/coro/templates/NOTES.txt",
+        "docs/**"
+      ],
+      "when": "edit",
+      "check": {
+        "type": "model",
+        "question": {
+          "type": "boolean",
+          "instructions": "Read the prose of the file. Does it carry a sign of model writing: inflated significance, a trailing clause that judges, words that avoid is and has, definition by negation, a sentence that strings three items for rhythm, hedges and vague attribution, bold for emphasis, text addressed to the reader, or a claim with no source? Commands, code, lists of names and a bulleted list of cases are not prose, and the bold label at the start of each decision or option of an ADR is not bold for emphasis.",
+          "criteria": {
+            "true": "the prose carries one or more of the signs",
+            "false": "the prose is plain and carries none of the signs"
+          }
+        }
+      }
+    },
+    {
+      "id": "minimal-comments",
+      "text": "A comment says only what the code cannot say through its names and its structure: the reason for a choice that looks wrong, an invariant, a workaround with the link to its cause, or the docstring of a public interface.",
+      "source": {
+        "path": "AGENTS.md",
+        "line": 87
+      },
+      "scope": [
+        "botica.toml",
+        "prefect.yaml",
+        "prek.toml",
+        "pyproject.toml",
+        ".github/dependabot.yml",
+        ".github/zizmor.yml",
+        ".github/workflows/**",
+        "charts/coro/Chart.yaml",
+        "charts/coro/values.yaml",
+        "charts/coro/ci/**",
+        "charts/coro/templates/autoscaling.yaml",
+        "charts/coro/templates/deployment.yaml",
+        "charts/coro/templates/extras.yaml",
+        "charts/coro/templates/service.yaml",
+        "charts/coro/templates/tests/**",
+        "coro_batch/__init__.py",
+        "coro_batch/settings.py",
+        "coro_batch/core/__init__.py",
+        "coro_batch/core/errors.py",
+        "coro_batch/core/jobs.py",
+        "coro_batch/core/logger.py",
+        "coro_batch/core/models.py",
+        "coro_batch/core/ports.py",
+        "coro_batch/core/retry.py",
+        "coro_batch/entrypoints/__init__.py",
+        "coro_batch/entrypoints/flows.py",
+        "coro_batch/entrypoints/wiring.py",
+        "coro_batch/impl/__init__.py",
+        "coro_batch/impl/clock.py",
+        "coro_batch/impl/coro_http.py",
+        "coro_batch/impl/fsspec_storage.py",
+        "coro_batch/impl/http_callback.py",
+        "coro_batch/impl/prefect_concurrency.py",
+        "deploy/**",
+        "examples/kind/cluster.yaml",
+        "examples/kind/coro-values.yaml",
+        "examples/kind/demo.yaml",
+        "examples/kind/prefect-server-values.yaml",
+        "tests/__init__.py",
+        "tests/core/__init__.py",
+        "tests/core/test_jobs.py",
+        "tests/core/test_retry.py",
+        "tests/entrypoints/__init__.py",
+        "tests/entrypoints/test_flows.py",
+        "tests/impl/__init__.py",
+        "tests/impl/test_coro_http.py",
+        "tests/impl/test_fsspec_storage.py",
+        "tests/impl/test_http_callback.py",
+        "tests/support/__init__.py",
+        "tests/support/fakes.py"
+      ],
+      "when": "edit",
+      "check": {
+        "type": "model",
+        "question": {
+          "type": "boolean",
+          "instructions": "Read the comments of the file and the code next to them. Leave out first the comments that never break the rule: a comment whose text starts with `MARK:`, which botica and editors read as the start of a section; a header that describes the whole file; a doc comment or docstring of any item; the code of a standard cited alone; a directive that a tool reads (a suppression, `zizmor: ignore`, `noqa`); and an option of a template left commented out under a comment that says how to turn it on. Of the comments left, does one repeat what the next lines say, name a section of the file, keep code commented out or tell the history of a change? A comment that gives the reason for a choice that looks wrong, an invariant the types do not show or a workaround with the link to its cause does not break the rule, however many such comments the file has. Attributes such as `#[test]` are not comments. A file with no comment left does not break the rule.",
+          "criteria": {
+            "true": "a comment repeats the code, names a section, keeps old code or tells the history of a change",
+            "false": "every comment says something the code cannot, or the file has none"
+          }
+        }
+      }
+    },
+    {
+      "id": "ubiquitous-language",
+      "text": "Each concept of the domain has one term, the one that `GLOSSARY.md` defines, in the code and in the documentation. `GLOSSARY.md` lists each term with its definition and the words to avoid for it, and the code and the documentation use the term.",
+      "source": {
+        "path": "AGENTS.md",
+        "line": 88
+      },
+      "scope": [
+        "AGENTS.md",
+        "README.md",
+        ".github/pull_request_template.md",
+        ".github/ISSUE_TEMPLATE/**",
+        "charts/coro/README.md",
+        "coro_batch/__init__.py",
+        "coro_batch/settings.py",
+        "coro_batch/core/__init__.py",
+        "coro_batch/core/errors.py",
+        "coro_batch/core/jobs.py",
+        "coro_batch/core/logger.py",
+        "coro_batch/core/models.py",
+        "coro_batch/core/ports.py",
+        "coro_batch/core/retry.py",
+        "coro_batch/entrypoints/__init__.py",
+        "coro_batch/entrypoints/flows.py",
+        "coro_batch/entrypoints/wiring.py",
+        "coro_batch/impl/__init__.py",
+        "coro_batch/impl/clock.py",
+        "coro_batch/impl/coro_http.py",
+        "coro_batch/impl/fsspec_storage.py",
+        "coro_batch/impl/http_callback.py",
+        "coro_batch/impl/prefect_concurrency.py",
+        "docs/**",
+        "tests/__init__.py",
+        "tests/core/__init__.py",
+        "tests/core/test_jobs.py",
+        "tests/core/test_retry.py",
+        "tests/entrypoints/__init__.py",
+        "tests/entrypoints/test_flows.py",
+        "tests/impl/__init__.py",
+        "tests/impl/test_coro_http.py",
+        "tests/impl/test_fsspec_storage.py",
+        "tests/impl/test_http_callback.py",
+        "tests/support/__init__.py",
+        "tests/support/fakes.py"
+      ],
+      "when": "edit",
+      "check": {
+        "type": "model",
+        "question": {
+          "type": "boolean",
+          "instructions": "Read the names and the prose of the file. Does it give one concept of the domain two or more names, such as a parameter `client` of type `Customer` next to an `account` of the same type, or a name that the glossary of the project (GLOSSARY.md) says to avoid, when the glossary is in view? Terms of programming and names of a library are not terms of the domain. A document that shows a violation as an example, such as the `Don't` section of a rule, does not commit it.",
+          "criteria": {
+            "true": "a concept has two names, or a name the glossary says to avoid",
+            "false": "each concept has one term, the one of the glossary"
+          }
+        }
+      }
+    }
+  ]
+}

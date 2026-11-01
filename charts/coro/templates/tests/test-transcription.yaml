@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "coro.fullname" . }}-test-transcription
+  labels:
+    {{- include "coro.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  containers:
+    # Transcribes the warmup clip that ships inside the coro image, through the Service.
+    - name: transcribe
+      image: {{ include "coro.image" . }}
+      command:
+        - python3
+        - -c
+        - |
+          import json, pathlib, sys, urllib.request, uuid
+          import coro.bench.data as data
+          audio = pathlib.Path(data.__file__).with_name("jfk.wav").read_bytes()
+          boundary = uuid.uuid4().hex
+          body = (
+              f"--{boundary}\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\nwhisper-1\r\n"
+              f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"jfk.wav\"\r\n"
+              "Content-Type: audio/wav\r\n\r\n"
+          ).encode() + audio + f"\r\n--{boundary}--\r\n".encode()
+          request = urllib.request.Request(
+              "http://{{ include "coro.fullname" . }}:{{ .Values.service.port }}/v1/audio/transcriptions",
+              data=body,
+              headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+          )
+          text = json.load(urllib.request.urlopen(request, timeout=600))["text"]
+          print(text)
+          sys.exit(0 if "country" in text.lower() else 1)

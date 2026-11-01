@@ -1,0 +1,65 @@
+# The rules of the recipes `full-python`, `agent-opencode`, `agent-claude-code`, `repo-public`, written by `botica recipe install`. `botica lint`, its hooks
+# in prek.toml and the editor read this list, and a rule that botica adds later runs once it
+# is listed here. `botica recipe check` compares it with the recipes.
+select = [
+  "file-size-guard",
+  "no-notebooks",
+  "no-artifacts-in-package",
+  "no-utils",
+  "lockfile-committed",
+  "io-error",
+  "unused-suppression",
+  "invalid-suppression",
+  "external-config",
+  "botica-version-aligned",
+  "conventional-commits",
+  "no-ai-coauthorship",
+  "dockerfile-lint",
+  "compose-config",
+  "no-tests-in-package",
+  "no-dict-alias",
+  "no-dict-call-return",
+  "no-dict-literal-return",
+  "no-dict-return-annotation",
+  "api-schemas-extra-forbid",
+  "log-get-logger",
+  "log-no-print",
+  "settings-module",
+  "cli-typed-framework",
+  "database-package",
+  "import-layers",
+  "settings-env-schema",
+  "cognitive-complexity",
+  "ruff-selection",
+  "docstring-matches-signature",
+  "pytest-strict",
+  "test-no-subprocess",
+  "test-no-network",
+  "asyncio-no-get-event-loop",
+  "uv-cooldown",
+  "ruff-heavy-imports-in-function",
+  "ruff-imports-at-top",
+  "no-eager-heavy-imports",
+  "dependabot-cooldown",
+  "separate-orchestration",
+  "architecture-vocabulary",
+  "pr-small-by-intent",
+  "respect-local-repo",
+  "test-in-memory-adapters",
+  "test-through-interface",
+  "test-coverage-gap",
+  "coverage-exclusion-reachable",
+  "plain-writing",
+  "minimal-comments",
+  "ubiquitous-language",
+  # The rules of the catalog of this repository, in .botica/rules/coro-k8s.
+  "coro-k8s/chart-check",
+]
+preview = true
+
+[recipes]
+installed = ["full-python", "agent-opencode", "agent-claude-code", "repo-public"]
+
+[rules.import-layers]
+# The settings module reads the environment and imports nothing of the package, so it is the bottom.
+layers = ["coro_batch.entrypoints", "coro_batch.impl", "coro_batch.core", "coro_batch.settings"]

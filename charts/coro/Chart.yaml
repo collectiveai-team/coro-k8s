@@ -1,0 +1,22 @@
+apiVersion: v2
+name: coro
+description: >-
+  coro, a self-hosted speech-to-text server with the OpenAI and Deepgram APIs,
+  as a Deployment of replicas sized by their CPU limit, with optional autoscaling
+  on queued ASR work.
+type: application
+version: 0.1.0
+appVersion: "1.6.0"
+kubeVersion: ">=1.27.0-0"
+home: https://github.com/collectiveai-team/coro-k8s
+sources:
+  - https://github.com/collectiveai-team/coro
+  - https://github.com/collectiveai-team/coro-k8s
+keywords:
+  - asr
+  - speech-to-text
+  - transcription
+  - diarization
+maintainers:
+  - name: collective.ai
+    url: https://github.com/collectiveai-team

@@ -1,0 +1,6 @@
+autoscaling:
+  mode: hpa
+modelCache:
+  existingClaim: models
+metrics:
+  podAnnotations: true

@@ -1,0 +1,16 @@
+# Values of the prefect/prefect-server chart for coro-k8s.
+#
+# The bundled PostgreSQL is the chart's default and keeps job history across
+# restarts. For production, point externalDatabase at a managed PostgreSQL and
+# set postgresql.enabled=false.
+server:
+  uiConfig:
+    # The URL the browser uses to reach the API; port-forward 4200 in development.
+    prefectUiApiUrl: http://localhost:4200/api
+
+postgresql:
+  enabled: true
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi

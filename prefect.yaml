@@ -1,0 +1,29 @@
+# The Prefect deployment of the coro-batch flow. `prefect deploy --all` registers it.
+#
+# The image is built from the Dockerfile of this repository and holds the code,
+# so there is no build, push or pull of code here. Two variables fill it in:
+#   CORO_BATCH_IMAGE   the image of the flow runs
+#   CORO_URL           the coro Service, as the flow runs reach it
+name: coro-k8s
+prefect-version: 3.9.0
+
+build: null
+push: null
+pull:
+  - prefect.deployments.steps.set_working_directory:
+      directory: /opt/coro-batch
+
+deployments:
+  - name: transcribe-batch
+    description: Transcribe a batch of audio files with coro and call back each job.
+    entrypoint: coro_batch/entrypoints/flows.py:transcribe_batch
+    work_pool:
+      name: coro-k8s
+      job_variables:
+        image: "{{ $CORO_BATCH_IMAGE }}"
+        image_pull_policy: IfNotPresent
+        namespace: prefect
+        env:
+          CORO_BATCH_CORO_URL: "{{ $CORO_URL }}"
+          CORO_BATCH_CALLBACK_SECRET_BLOCK: coro-batch-callback-secret
+          CORO_BATCH_CONCURRENCY_LIMIT: coro-transcriptions

@@ -1,0 +1,5 @@
+# On a laptop: the embedded SQLite instead of the bundled PostgreSQL.
+sqlite:
+  enabled: true
+postgresql:
+  enabled: false

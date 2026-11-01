@@ -1,0 +1,15 @@
+id = "coro-k8s/chart-check"
+code = "COROKSINFRA001"
+summary = "prek.toml lints the coro chart with helm and validates its manifests with kubeconform"
+status = "preview"
+default-enabled = false
+default-severity = "error"
+
+[[implementations]]
+kind = "external"
+languages = ["*"]
+applies-when = ["charts/coro/Chart.yaml"]
+tool = "helm"
+docs = "https://helm.sh/docs/helm/helm_lint/"
+codes = []
+config = "config/prek.toml"

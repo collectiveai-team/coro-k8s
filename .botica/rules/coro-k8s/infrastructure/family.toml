@@ -1,0 +1,3 @@
+code = "INFRA"
+description = "The gates over what the repository deploys: the Helm chart."
+extends = "infrastructure"

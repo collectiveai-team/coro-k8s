@@ -1,0 +1,2 @@
+# The defaults: one CPU replica, no autoscaling, no extras.
+{}

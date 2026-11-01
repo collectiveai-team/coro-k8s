@@ -1,0 +1,21 @@
+autoscaling:
+  mode: keda
+  minReplicas: 2
+  maxReplicas: 8
+metrics:
+  serviceMonitor:
+    enabled: true
+podDisruptionBudget:
+  enabled: true
+networkPolicy:
+  enabled: true
+  from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: prefect
+ingress:
+  enabled: true
+  className: nginx
+coro:
+  hfTokenSecret:
+    name: coro-hf

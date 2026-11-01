@@ -1,0 +1,79 @@
+{{- $fullname := include "coro.fullname" . }}
+{{- if eq .Values.autoscaling.mode "hpa" }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "coro.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $fullname }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.hpa.targetCPUUtilizationPercentage }}
+  behavior:
+    scaleDown:
+      # A replica takes minutes to warm up; do not give it back on a short lull.
+      stabilizationWindowSeconds: 600
+{{- else if eq .Values.autoscaling.mode "keda" }}
+{{- $selector := printf "namespace=%q,service=%q" .Release.Namespace $fullname }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "coro.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    name: {{ $fullname }}
+  minReplicaCount: {{ .Values.autoscaling.minReplicas }}
+  maxReplicaCount: {{ .Values.autoscaling.maxReplicas }}
+  pollingInterval: {{ .Values.autoscaling.keda.pollingInterval }}
+  cooldownPeriod: {{ .Values.autoscaling.keda.cooldownPeriod }}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: {{ .Values.autoscaling.keda.cooldownPeriod }}
+  triggers:
+    # Calls queued or in flight per ASR permit, over all replicas. With metricType
+    # Value the HPA scales the replica count by value / target.
+    - type: prometheus
+      metricType: Value
+      metadata:
+        serverAddress: {{ .Values.autoscaling.keda.prometheusServerAddress | quote }}
+        threshold: {{ .Values.autoscaling.keda.targetLoadPerPermit | quote }}
+        query: >-
+          (sum(coro_asr_inferences_queued{ {{- $selector -}} })
+          + sum(coro_asr_inferences_in_flight{ {{- $selector -}} }))
+          / sum(coro_asr_inference_permits{ {{- $selector -}} })
+{{- end }}
+{{- if .Values.metrics.serviceMonitor.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "coro.labels" . | nindent 4 }}
+    {{- with .Values.metrics.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "coro.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
+{{- end }}

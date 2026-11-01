@@ -1,0 +1,11 @@
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "chart-check"
+name = "helm lint and kubeconform (charts/coro)"
+entry = "scripts/check-chart.sh"
+language = "system"
+files = "^(charts/|scripts/check-chart\\.sh$)"
+pass_filenames = false
+priority = 2

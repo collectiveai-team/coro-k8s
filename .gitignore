@@ -1,0 +1,9 @@
+.env
+!.env.schema
+.tmp/
+.scratch/
+.worktrees/
+.journals/
+.agents/skills/
+node_modules/
+target/

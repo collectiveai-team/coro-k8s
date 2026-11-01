@@ -1,0 +1,163 @@
+# Values of the coro chart. charts/coro/README.md explains each group.
+
+image:
+  repository: ghcr.io/collectiveai-team/coro
+  # Empty: the appVersion of the chart. The flavour is appended: `<tag>-<flavor>`.
+  tag: ""
+  # cpu or gpu. gpu also needs `gpu.enabled`.
+  flavor: cpu
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Ignored when autoscaling (hpa or keda) is enabled.
+replicaCount: 1
+
+# CORO_* variables of the server (coro/settings/server.py). Values are strings.
+coro:
+  env:
+    CORO_PIPELINE: full-memory
+    # 0: one permit per 4 cores of the CPU limit. Requires coro > 1.6.0 to read
+    # the limit; set it explicitly for 1.6.0 and older.
+    CORO_ASR_MAX_CONCURRENCY: "0"
+    CORO_ASR_MAX_QUEUE_DEPTH: "32"
+    # The limits of coro are per replica; enforce a global one at the edge.
+    CORO_RATE_LIMIT_REQUESTS_PER_MINUTE: "0"
+  # Secret holding HF_TOKEN, for gated Hugging Face models.
+  hfTokenSecret:
+    name: ""
+    key: HF_TOKEN
+  # Extra env entries, rendered as given (valueFrom allowed).
+  extraEnv: []
+  # Proxies whose X-Forwarded-For uvicorn trusts. "*" trusts any client in the
+  # cluster network; narrow it to the ingress controller when coro is exposed.
+  forwardedAllowIps: "*"
+
+# Guaranteed QoS (requests == limits, whole CPUs) keeps the CPU affinity of the
+# pod equal to its limit under the static CPU manager policy.
+resources:
+  requests:
+    cpu: "4"
+    memory: 8Gi
+  limits:
+    cpu: "4"
+    memory: 8Gi
+
+gpu:
+  enabled: false
+  # Added to resources.limits when enabled.
+  resourceName: nvidia.com/gpu
+  count: 1
+
+# Hugging Face cache, shared by the replicas so a new one does not download the
+# models again. Without a claim it is an emptyDir per pod.
+modelCache:
+  existingClaim: ""
+  create: false
+  accessModes:
+    - ReadWriteMany
+  size: 30Gi
+  storageClassName: ""
+  mountPath: /cache
+
+# Spill directory of the streaming pipeline and of live WebSocket backlogs.
+# Always disk-backed: a RAM-backed spill defeats it.
+spill:
+  sizeLimit: 20Gi
+  mountPath: /var/lib/coro/spill
+
+service:
+  type: ClusterIP
+  port: 8000
+  annotations: {}
+
+probes:
+  # Model download plus Server Warmup. 120 x 10 s = 20 minutes.
+  startup:
+    periodSeconds: 10
+    failureThreshold: 120
+  readiness:
+    periodSeconds: 10
+    failureThreshold: 3
+  liveness:
+    periodSeconds: 30
+    failureThreshold: 5
+    timeoutSeconds: 10
+
+# uvicorn waits for the requests in flight on SIGTERM. Above the longest
+# transcription you expect, or a scale-down cuts it.
+terminationGracePeriodSeconds: 3600
+# Seconds the pod keeps serving after it leaves the Service endpoints.
+preStopSleepSeconds: 10
+
+autoscaling:
+  # none, hpa (CPU) or keda (queued ASR work, needs coro > 1.6.0 and KEDA).
+  mode: none
+  minReplicas: 1
+  maxReplicas: 4
+  hpa:
+    targetCPUUtilizationPercentage: 70
+  keda:
+    prometheusServerAddress: http://prometheus-operated.monitoring.svc:9090
+    # Scale out when the queued plus in-flight calls per permit pass this.
+    targetLoadPerPermit: "1"
+    pollingInterval: 15
+    cooldownPeriod: 600
+
+metrics:
+  serviceMonitor:
+    enabled: false
+    interval: 15s
+    labels: {}
+  # prometheus.io/* annotations on the pods, for annotation-based scraping.
+  podAnnotations: false
+
+podDisruptionBudget:
+  enabled: false
+  maxUnavailable: 1
+
+networkPolicy:
+  enabled: false
+  # Peers allowed to reach the HTTP port, as NetworkPolicy `from` entries.
+  from: []
+
+ingress:
+  enabled: false
+  className: ""
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+  hosts:
+    - host: coro.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+priorityClassName: ""
+
+# The image runs as root and writes its caches under HOME.
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
