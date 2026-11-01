@@ -48,7 +48,8 @@ The callback body is the outcome:
 With a key configured, `X-Coro-Batch-Timestamp` carries Unix seconds and
 `X-Coro-Batch-Signature` carries `sha256=` and the hex HMAC-SHA256 of
 `"<timestamp>.<body>"`. A callback can arrive more than once; deduplicate on
-`job_id`.
+`job_id`. [docs/integration.md](docs/integration.md#receive-the-callbacks) has a
+receiver that verifies the signature.
 
 ### Failures and retries
 
@@ -119,6 +120,8 @@ kind delete cluster --name coro-k8s
 
 5. Start a batch with `POST /api/deployments/{id}/create_flow_run` and
    `{"parameters": {"jobs": [...]}}`, or `prefect deployment run`.
+   [docs/integration.md](docs/integration.md) shows how an application starts
+   batches, follows them and verifies the callbacks.
 
 ## Development
 
