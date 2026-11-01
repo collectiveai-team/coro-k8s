@@ -55,6 +55,8 @@ project-excludes = [
   "**/venv/**/*",
   "**/.venv/**/*",
   "**/.uv_cache/**/*",
+  # A symlink to .agents/skills, which `botica recipe install` fills and git ignores.
+  ".claude/**",
 ]
 use-ignore-files = false
 disable-project-excludes-heuristics = true
