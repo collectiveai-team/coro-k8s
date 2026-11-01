@@ -96,7 +96,7 @@ and network access.
 ```sh
 uv sync
 examples/kind/up.sh        # cluster, images, coro (whisper-tiny on CPU), Prefect, demo services
-examples/kind/run-demo.sh  # deploys the flow, runs 3 jobs, prints the callbacks
+examples/kind/run-demo.sh  # deploys the flow, runs 3 jobs, checks the callbacks
 kind delete cluster --name coro-k8s
 ```
 
@@ -128,5 +128,10 @@ uvx prek install
 uvx prek run --all-files      # ruff, pyrefly, botica, helm lint + kubeconform
 uv run pytest                 # tests/entrypoints starts a temporary Prefect server
 ```
+
+`.github/workflows/e2e.yml` runs `examples/kind/up.sh` and `run-demo.sh` on a
+kind cluster in CI: on pull requests that touch the chart, the flow, the
+Prefect files or the image, every night, and on demand. It takes about 15
+minutes.
 
 Decisions are recorded under [docs/adr](docs/adr).
